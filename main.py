@@ -140,6 +140,15 @@ class Game:
             text_next = self.font.render("Следующая фигура", True, WHITE)
             self.screen.blit(text_next, (320, 100))
 
+            #  Размеры обводки
+            border_x = start_x * GRID_SIZE - 15
+            border_y = (start_y - 0.5) * GRID_SIZE   # Поднимаем немного обводку
+            border_width = 5 * GRID_SIZE
+            border_height = 5 * GRID_SIZE - 58
+
+            # Отрисовка обводки
+            pygame.draw.rect(self.screen, WHITE, (border_x, border_y, border_width, border_height), 2)
+
             for y, row in enumerate(self.next_tetromino.shape):
                 for x, cell in enumerate(row):
                     if cell:
