@@ -1,17 +1,16 @@
 import pygame
 import random
+import winsound
+import os
 
 pygame.init()
-
 
 WIDTH = 800
 HEIGHT = 600
 
-
 GRID_WIDTH = 10
 GRID_HEIGHT = 20
 GRID_SIZE = 30
-
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -41,8 +40,15 @@ SHAPES = [
     [[0, 0, 1],
      [1, 1, 1]],  # J
     [[1, 0],
-     [0, 1]]      # Test
+     [0, 1]]  # Test
 ]
+
+try:
+    def play_beep():
+        winsound.Beep(500, 100)
+except Exception:
+    def play_beep():
+        print('Звук только для пользователей Windows, извините')
 
 
 class Tetromino:
@@ -81,6 +87,14 @@ class Game:
         self.font = pygame.font.Font(None, 36)
         self.base_fall_speed = 500
         self.fall_speed = self.base_fall_speed
+        self.level = 1
+        self.high_score = self.load_high_score()
+        # Звуковая кнопка
+        self.is_sound = True
+        self.sound_button_x = WIDTH - 160
+        self.sound_button_y = HEIGHT - 100
+        self.sound_button_width = 150
+        self.sound_button_height = 80
 
     def new_tetromino(self):
         return Tetromino(random.choice(SHAPES))  # выбирается случайная тертромино
@@ -90,9 +104,20 @@ class Game:
             for x, cell in enumerate(row):
                 pygame.draw.rect(
                     self.screen,
-                    GRAY if cell == 0 else COLORS[cell - 1],(x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE),
+                    GRAY if cell == 0 else COLORS[cell - 1], (x * GRID_SIZE, y * GRID_SIZE, GRID_SIZE, GRID_SIZE),
                     1 if cell == 0 else 0
                 )
+
+    def load_high_score(self):
+        try:
+            with open("highscore.txt", "r") as file:
+                return int(file.read())
+        except FileNotFoundError:
+            return 0
+
+    def save_high_score(self):
+        with open("highscore.txt", "w") as file:
+            file.write(str(self.high_score))
 
     def draw_tetromino(self):
         if self.current_tetromino:
@@ -173,13 +198,33 @@ class Game:
                 self.grid.insert(0, [0 for _ in range(GRID_WIDTH)])
 
     def draw_score(self):
-        score_text = self.font.render(f"Score: {self.score}", True, WHITE)
+        score_text = self.font.render(f"Получено очков: {self.score}", True, WHITE)
         self.screen.blit(score_text, (320, 10))
 
+        high_score_text = self.font.render(f"Лучший резульат: {self.high_score}", True, WHITE)
+        self.screen.blit(high_score_text, (320, 400))
+
     def draw_game_over(self):
-        game_over_text = self.font.render("Game Over!", True, WHITE)
+        game_over_text = self.font.render("Вы погибли!", True, (255, 0, 0))
         self.screen.blit(game_over_text,
                          (WIDTH // 2 - game_over_text.get_width() // 2, HEIGHT // 2 - game_over_text.get_height() // 2))
+
+    def draw_level(self):
+        level_text = self.font.render(f"Уровень сложности: {self.level}", True, WHITE)
+        self.screen.blit(level_text, (320, 40))
+
+    def draw_sound_button(self):
+        button_color = (0, 255, 0) if self.is_sound else (255, 0, 0)
+        pygame.draw.rect(
+            self.screen,
+            button_color,
+            (self.sound_button_x, self.sound_button_y, self.sound_button_width, self.sound_button_height)
+        )
+
+        text_dd = self.font.render("Бипанье", True, WHITE)
+        text_rect = text_dd.get_rect(center=(
+            self.sound_button_x + self.sound_button_width // 2, self.sound_button_y + self.sound_button_height // 2))
+        self.screen.blit(text_dd, text_rect)
 
     def main(self):
         fall_time = 0
@@ -194,17 +239,33 @@ class Game:
                     if event.key == pygame.K_LEFT:
                         if self.valid_move(self.current_tetromino.shape, -1, 0):
                             self.current_tetromino.x -= 1
+                            if self.is_sound:
+                                play_beep()
                     elif event.key == pygame.K_RIGHT:
                         if self.valid_move(self.current_tetromino.shape, 1, 0):
                             self.current_tetromino.x += 1
+                            if self.is_sound:
+                                play_beep()
                     elif event.key == pygame.K_DOWN:
                         if self.valid_move(self.current_tetromino.shape, 0, 1):
                             self.current_tetromino.y += 1
+                            if self.is_sound:
+                                play_beep()
                     elif event.key == pygame.K_UP:
                         rotated_shape = self.current_tetromino.shape
                         self.current_tetromino.rotate()
                         if not self.valid_move(self.current_tetromino.shape, 0, 0):
                             self.current_tetromino.shape = rotated_shape
+                        else:
+                            if self.is_sound:
+                                play_beep()
+
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    mouse_x, mouse_y = event.pos
+                    #  Проверяем нажатие внутри кнопки
+                    if self.sound_button_x <= mouse_x <= self.sound_button_x + self.sound_button_width and \
+                            self.sound_button_y <= mouse_y <= self.sound_button_y + self.sound_button_height:
+                        self.is_sound = not self.is_sound
 
             if not self.game_over:
                 fall_time += self.clock.get_rawtime()
@@ -213,17 +274,21 @@ class Game:
                 #  Увеличение сложности
                 if self.score >= 1000 and self.fall_speed == self.base_fall_speed:
                     self.fall_speed = self.base_fall_speed * 0.8
+                    self.level = 2
                 elif self.score >= 2000 and self.fall_speed == self.base_fall_speed * 0.8:
                     self.fall_speed = self.base_fall_speed * 0.6
+                    self.level = 3
                 elif self.score >= 3000 and self.fall_speed == self.base_fall_speed * 0.6:
                     self.fall_speed = self.base_fall_speed * 0.4
+                    self.level = 4
                 elif self.score >= 4000 and self.fall_speed == self.base_fall_speed * 0.4:
-                    self.fall_speed = self.base_fall_speed * 0.2  # по идее если поле не пустое то тут уже невозможно
+                    self.fall_speed = self.base_fall_speed * 0.2
+                    self.level = 5  # по идее если поле не пустое то тут уже невозможно
 
                 if fall_time > self.fall_speed:
                     fall_time = 0
                     if self.valid_move(self.current_tetromino.shape, 0, 1):
-                         self.current_tetromino.y += 1
+                        self.current_tetromino.y += 1
                     else:
                         self.place_tetromino()
 
@@ -232,8 +297,13 @@ class Game:
             self.draw_tetromino()
             self.draw_score()
             self.draw_next_tetormino()
+            self.draw_level()
+            self.draw_sound_button()
             if self.game_over:
                 self.draw_game_over()
+                if self.score > self.high_score:
+                    self.high_score = self.score
+                    self.save_high_score()
             pygame.display.flip()
 
         pygame.quit()
