@@ -137,6 +137,9 @@ class Game:
             start_x = (GRID_WIDTH + 2)
             start_y = 5
 
+            text_next = self.font.render("Следующая фигура", True, WHITE)
+            self.screen.blit(text_next, (320, 100))
+
             for y, row in enumerate(self.next_tetromino.shape):
                 for x, cell in enumerate(row):
                     if cell:
