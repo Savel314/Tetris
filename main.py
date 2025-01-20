@@ -79,6 +79,8 @@ class Game:
         self.game_over = False
         self.score = 0
         self.font = pygame.font.Font(None, 36)
+        self.base_fall_speed = 500
+        self.fall_speed = self.base_fall_speed
 
     def new_tetromino(self):
         return Tetromino(random.choice(SHAPES))  # выбирается случайная тертромино
@@ -142,11 +144,9 @@ class Game:
 
             #  Размеры обводки
             border_x = start_x * GRID_SIZE - 15
-            border_y = (start_y - 0.5) * GRID_SIZE   # Поднимаем немного обводку
+            border_y = (start_y - 0.5) * GRID_SIZE
             border_width = 5 * GRID_SIZE
             border_height = 5 * GRID_SIZE - 58
-
-            # Отрисовка обводки
             pygame.draw.rect(self.screen, WHITE, (border_x, border_y, border_width, border_height), 2)
 
             for y, row in enumerate(self.next_tetromino.shape):
@@ -210,10 +210,20 @@ class Game:
                 fall_time += self.clock.get_rawtime()
                 self.clock.tick()
 
-                if fall_time > fall_speed:
+                #  Увеличение сложности
+                if self.score >= 1000 and self.fall_speed == self.base_fall_speed:
+                    self.fall_speed = self.base_fall_speed * 0.8
+                elif self.score >= 2000 and self.fall_speed == self.base_fall_speed * 0.8:
+                    self.fall_speed = self.base_fall_speed * 0.6
+                elif self.score >= 3000 and self.fall_speed == self.base_fall_speed * 0.6:
+                    self.fall_speed = self.base_fall_speed * 0.4
+                elif self.score >= 4000 and self.fall_speed == self.base_fall_speed * 0.4:
+                    self.fall_speed = self.base_fall_speed * 0.2  # по идее если поле не пустое то тут уже невозможно
+
+                if fall_time > self.fall_speed:
                     fall_time = 0
                     if self.valid_move(self.current_tetromino.shape, 0, 1):
-                        self.current_tetromino.y += 1
+                         self.current_tetromino.y += 1
                     else:
                         self.place_tetromino()
 
